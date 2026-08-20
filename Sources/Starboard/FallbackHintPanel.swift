@@ -1,4 +1,5 @@
 import Cocoa
+import SwiftUI
 
 enum FallbackHintPanel {
     static let padding: CGFloat = 10
@@ -17,7 +18,7 @@ enum FallbackHintPanel {
                 with: NSSize(width: textWidth, height: .greatestFiniteMagnitude),
                 options: [.usesLineFragmentOrigin, .usesFontLeading]
             ).height)
-        let mascotHeight = (mascotWidth * MascotImage.aspectRatio).rounded(.up)
+        let mascotHeight = (mascotWidth * Mascot.aspectRatio).rounded(.up)
         let height = padding + mascotHeight + mascotRowGap + textHeight + padding
 
         let panel = NSPanel(
@@ -65,12 +66,10 @@ enum FallbackHintPanel {
         label.drawsBackground = false
         effectView.addSubview(label)
 
-        let mascot = NSImageView(
-            frame: NSRect(
-                x: (width - mascotWidth) / 2, y: padding + textHeight + mascotRowGap,
-                width: mascotWidth, height: mascotHeight))
-        mascot.image = MascotImage.image
-        mascot.imageScaling = .scaleProportionallyUpOrDown
+        let mascot = NSHostingView(rootView: Mascot())
+        mascot.frame = NSRect(
+            x: (width - mascotWidth) / 2, y: padding + textHeight + mascotRowGap,
+            width: mascotWidth, height: mascotHeight)
         effectView.addSubview(mascot)
 
         let closeButton = NSButton(

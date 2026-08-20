@@ -26,8 +26,8 @@ reads, debug logging, theme switching, panel appearance settings, the
 Accessibility fallback hint); `DockPresence`, `PanelBuilder`,
 `TerminalTheme`, `PanelSettings`, `Theme`, `ThemePickerView`,
 `SettingsPanelView`, `TerminalLayout`, `ShellEnvironment`,
-`FallbackHintPanel`, and `MascotImage` are standalone. Read the code for
-how it works — it's small and the names are literal.
+`FallbackHintPanel`, and `Mascot` are standalone. Read the code for how it
+works — it's small and the names are literal.
 
 Panel corner radius, background tint opacity, and terminal font are all
 user-adjustable at runtime via the "Settings…" panel menu item
@@ -43,12 +43,18 @@ overridden. Panel width was deliberately left out of this — the whole
 product idea is gluing to the Dock's tray width, so that one stays a
 hardcoded constant in `TerminalLayout`.
 
-`MascotImage` (a static NSImage decoded from an embedded base64 PNG — no
-SPM resource bundle, matching the "no Info.plist, no asset catalog"
-philosophy) is what the fallback hint panel actually shows. `MascotView`
-is a separate, currently-unwired, hand-drawn animated version of the same
-mascot (walk-cycle legs, blink, look-around) — kept in the tree on
-purpose for a future session, not dead code to clean up.
+`Mascot.swift` is a SwiftUI rewrite of the fallback hint's mascot — same
+16×13 grid, same walk/blink/wandering-gaze animation as before, but
+`Canvas` + `TimelineView` instead of the old `NSView` + `Timer` +
+`needsDisplay`, because the AppKit version never actually animated once
+embedded in a real panel (see the gotcha below). `FallbackHintPanel`
+hosts it via `NSHostingView`. There's a sibling `mascots` repo
+(`../mascots`) that documents this same character — including Port's and
+agent-patterns' own variants — as a reference, but Starboard does *not*
+depend on it: a `../mascots` path dependency in `Package.swift` broke
+`swift build` in `.github/workflows/build.yml`, which only checks out
+this repo, not a sibling. `Mascot.swift` here is a deliberate,
+self-contained copy, not a package import — keep it that way.
 
 ## Non-obvious gotchas (not discoverable by reading the code)
 
@@ -106,17 +112,20 @@ purpose for a future session, not dead code to clean up.
   outside its own window's frame — no clipping-mask trick fixes that.
   The picker anchors to the main panel's bottom edge and grows upward
   in screen coordinates instead.
-- **`MascotView` is currently unwired** — the fallback hint shows the
-  static `MascotImage` instead. Its leg-frame `Timer` originally used
-  `Timer.scheduledTimer`'s default run-loop mode, which — like
-  `AppDelegate+Tracking.swift`'s `trackingTimer` before it was fixed the
-  same way — silently never fired; switching to `RunLoop.main.add(_:forMode:
-  .common)` fixed it in an isolated test (a plain `MascotView` pumped
-  outside the app), but the mascot still didn't visibly animate once
-  embedded in the actual child `NSPanel`. Root cause not found before the
-  animation was shelved in favor of a still image — worth a fresh look
-  before re-wiring it, rather than assuming the `.common` fix alone is
-  sufficient.
+- **The old hand-drawn mascot (AppKit `NSView` + `Timer` +
+  `needsDisplay`) never visibly animated once embedded in a real child
+  `NSPanel`, even after fixing its `Timer` to run in `.common` run-loop
+  mode** (the same fix `AppDelegate+Tracking.swift`'s `trackingTimer`
+  needed) — root cause was never found, and the mascot shipped as a still
+  image instead. Resolved by *not* fighting AppKit's `needsDisplay`/`Timer`
+  path at all: `Mascot.swift` is SwiftUI, driven by
+  `TimelineView(.periodic(...))` inside a `Canvas`, hosted via
+  `NSHostingView`. Confirmed animating correctly in this exact panel
+  recipe (borderless `.nonactivatingPanel` at `kCGDockWindowLevel+1`) by
+  screen-diffing two captures of a throwaway panel a fraction of a second
+  apart. If a future mascot host in this repo still doesn't animate,
+  suspect the host's plumbing before suspecting this pattern — it's known
+  to work here.
 
 ## Known open items
 
