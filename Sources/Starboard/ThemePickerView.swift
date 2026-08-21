@@ -99,4 +99,19 @@ final class ThemePickerView: NSView {
         selectedIndex = (selectedIndex + delta + themes.count) % themes.count
         needsDisplay = true
     }
+
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        guard
+            let row = rows.first(where: {
+                guard $0.theme != nil else { return false }
+                let rowRect = NSRect(x: 4, y: $0.y, width: bounds.width - 8, height: $0.height)
+                return rowRect.contains(point)
+            }),
+            let theme = row.theme
+        else { return }
+        selectedIndex = themes.firstIndex { $0.id == theme.id } ?? selectedIndex
+        needsDisplay = true
+        onCommit?(theme)
+    }
 }
